@@ -107,23 +107,18 @@ def build_subdomains(Lx, Ly, Nx, Ny, J, kappa, ps):
     return subs
 
 
-def S_operator(x, subs):
+def S_operator(p, subs):
     """
-    Apply S to a global vector x in V(S).
+    Apply scattering operator S to p in V(S), consistently with the PDF:
 
-    Convention implemented (coherent with Robin mass matrix Tj and Π as swap):
+      S = I + 2 i B (A - i B^* T B)^{-1} B^* T
+
     For each j:
-      xj = Cj x
-      solve  (Aj - i Bj^* Tj Bj) uj = bj + Bj^* (Tj xj)
-      output yj = xj + 2 i Tj (Bj uj)
-    Then y = concat(yj).
-
-    If your PDF uses a different sign, you will change only ONE of:
-      - RHS term  Bj^*(Tj xj)
-      - output    xj + 2 i ...
+      solve  (Aj - i Bj^* Tj Bj) vj = Bj^* (Tj pj)
+      output sj = pj + 2 i (Bj vj)
     """
-    x = np.asarray(x).reshape(-1)
-    y = np.zeros_like(x, dtype=np.complex128)
+    p = np.asarray(p).reshape(-1)
+    y = np.zeros_like(p, dtype=np.complex128)
 
     Nx = subs[0].Nx
     J = subs[0].J
@@ -136,15 +131,12 @@ def S_operator(x, subs):
         if ns == 0:
             continue
 
-        xj = x[off:off+ns]
+        pj = p[off:off+ns].astype(np.complex128)
 
-        # volume RHS: bj + Bj^* (Tj xj)
-        rhs = sd.bj.astype(np.complex128)
-        rhs = rhs + (sd.Bj.conjugate().T @ (sd.Tj @ xj))
+        rhs = sd.Bj.conjugate().T @ (sd.Tj @ pj)   # Bj^* Tj pj
+        vj = sd.lu.solve(rhs)
 
-        uj = sd.lu.solve(rhs)
-
-        yj = xj + 2j * (sd.Tj @ (sd.Bj @ uj))
+        yj = pj + 2j * (sd.Bj @ vj)                # pj + 2 i Bj vj
         y[off:off+ns] = yj
 
     return y
@@ -189,20 +181,20 @@ def Pi_operator(x, Nx, J):
 
 def g_vector(subs):
     """
-    Build global RHS g of interface problem.
+    Build g consistently with the PDF:
 
-    Convention coherent with S_operator:
-      set x = 0  -> solve local problems with rhs = bj
-      local contribution: gj = 2 i Tj (Bj uj0)
-      then assemble g and apply Π.
+      g = -2 i Π B (A - i B^* T B)^{-1} b
 
-    If your PDF defines g with a minus sign, change the 2i -> -2i below.
+    For each j:
+      solve (Aj - i Bj^* Tj Bj) u0j = bj
+      take qj = Bj u0j
+    Assemble q = concat(qj), then g = -2 i Π q
     """
     Nx = subs[0].Nx
     J = subs[0].J
     sizes, offsets, total = _block_offsets(Nx, J)
 
-    g = np.zeros(total, dtype=np.complex128)
+    q = np.zeros(total, dtype=np.complex128)
 
     for sd in subs:
         j = sd.j
@@ -212,11 +204,10 @@ def g_vector(subs):
             continue
 
         rhs = sd.bj.astype(np.complex128)
-        uj0 = sd.lu.solve(rhs)
+        u0j = sd.lu.solve(rhs)
 
-        gj = 2j * (sd.Tj @ (sd.Bj @ uj0))
-        g[off:off+ns] = gj
+        qj = (sd.Bj @ u0j).astype(np.complex128)   # Bj u0j
+        q[off:off+ns] = qj
 
-    # exchange to match the interface coupling
-    g = Pi_operator(g, Nx, J)
+    g = (-2j) * Pi_operator(q, Nx, J)
     return g
