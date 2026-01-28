@@ -1,0 +1,12 @@
+# macOS Finder metadata
+.DS_Store
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Common Python tooling caches (optional but useful)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
