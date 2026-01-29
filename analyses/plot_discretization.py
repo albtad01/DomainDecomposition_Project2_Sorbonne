@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-if __name__ == "__main__":
-    from pathlib import Path
-    import runpy
-    analyses_script = Path(__file__).resolve().parents[1] / "analyses" / "plot_discretization.py"
-    runpy.run_path(str(analyses_script), run_name="__main__")
-    raise SystemExit(0)
-
 import argparse
 from pathlib import Path
 
