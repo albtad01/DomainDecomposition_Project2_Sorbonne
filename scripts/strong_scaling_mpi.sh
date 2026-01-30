@@ -74,10 +74,10 @@ export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 
 # Fixed parameters
-MESH_SIZE=64
-WAVENUMBER=5.0
+MESH_SIZE=128
+WAVENUMBER=16
 TOLERANCE=1e-4
-OMEGA=1.0
+OMEGA=0.1
 
 # Subdomain counts / MPI ranks
 SUBDOMAINS=(2 4 8 16 32 64)
@@ -100,7 +100,8 @@ for J in "${SUBDOMAINS[@]}"; do
             --mpi \
             --omega ${OMEGA} \
             --tolerance ${TOLERANCE} \
-            --output-dir "${EXP_RESULTS_DIR}")
+            --output-dir "${EXP_RESULTS_DIR}" \
+            --save-plots)
 done
 
 echo ""

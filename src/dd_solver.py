@@ -30,7 +30,7 @@ def fixed_point_solver(subs: list[SubdomainData],
 
         (I + Π S) p = g
 
-    via the Richardson scheme:
+    via the Rich    ardson scheme:
         p_{n+1} = [(1-ω)I - ω Π S] p_n + ω g
 
     Parameters
@@ -278,7 +278,7 @@ def baseline_gmres_solver(Lx, Ly, Nx, Ny, kappa, ps,
         (K - κ² M - iκ Mb) u = M f
     
     where K is stiffness, M is mass, Mb is boundary mass.
-    
+        
     Parameters
     ----------
     Lx, Ly : float
