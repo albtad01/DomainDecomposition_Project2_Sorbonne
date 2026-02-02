@@ -1,7 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=DD_StrongScaling_MPI
-#SBATCH --account=p200981
-#SBATCH --partition=cpu
+#SBATCH --partition=az4-mixed
 #SBATCH --qos=default
 #SBATCH --nodes=4
 #SBATCH --ntasks=64
@@ -9,12 +8,13 @@
 #SBATCH --time=00:02:00
 #SBATCH --output=logs/strong_scaling_mpi_%j.out
 
-set -euo pipefail
 mkdir -p logs
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_DIR="$ROOT_DIR/src"
-EXP_RESULTS_DIR="$ROOT_DIR/results/strong_scaling_mpi_${SLURM_JOB_ID:-local}"
+cd ..
+
+SRC_DIR="./src"
+EXP_RESULTS_DIR="./results/strong_scaling_mpi_${SLURM_JOB_ID:-local}"
+echo "${EXP_RESULTS_DIR}"
 mkdir -p "$EXP_RESULTS_DIR"
 
 # --- Initialize module system on compute nodes ---
@@ -51,11 +51,17 @@ python -V
 python -c "import sys; print(sys.executable)"
 echo "====================="
 
-if [ ! -f "$ROOT_DIR/venv/bin/activate" ]; then
-    echo "ERROR: venv/bin/activate not found in ${ROOT_DIR}."
-    exit 1
-fi
-source "$ROOT_DIR/venv/bin/activate"
+#python3 -m venv venv
+#source venv/bin/activate
+#pip install -r requirements.txt
+
+#if [ ! -f "$ROOT_DIR/venv/bin/activate" ]; then
+#    echo "ERROR: venv/bin/activate not found in ${ROOT_DIR}."
+#    exit 1
+#fi
+source venv/bin/activate
+
+#pip install mpi4py
 
 echo "=== VENV PYTHON ==="
 which python
@@ -74,7 +80,7 @@ export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 
 # Fixed parameters
-MESH_SIZE=128
+MESH_SIZE=256
 WAVENUMBER=16
 TOLERANCE=1e-4
 OMEGA=0.1
@@ -101,7 +107,7 @@ for J in "${SUBDOMAINS[@]}"; do
             --omega ${OMEGA} \
             --tolerance ${TOLERANCE} \
             --output-dir "${EXP_RESULTS_DIR}" \
-            --no-solution)
+            --save-plots)
 done
 
 echo ""
