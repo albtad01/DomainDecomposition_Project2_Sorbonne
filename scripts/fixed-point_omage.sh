@@ -24,6 +24,7 @@ OMEGAS=(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
 echo "Running fixed-point omega study..."
 for OMEGA in "${OMEGAS[@]}"; do
 	echo "  omega=${OMEGA}"
+	OMEGA_RESULTS_DIR="$EXP_RESULTS_DIR/omega_${OMEGA}"
 	(cd "$SRC_DIR" && python main.py \
 		-a fixed-point \
 		-m "$MESH_SIZE" \
@@ -33,8 +34,8 @@ for OMEGA in "${OMEGAS[@]}"; do
 		--tolerance "$TOLERANCE" \
 		--max-iterations "$MAX_ITER" \
 		--omega "$OMEGA" \
-		--output-dir "$EXP_RESULTS_DIR" \
-		--save-plots)
+		--output-dir "$OMEGA_RESULTS_DIR" \
+		--no-solution )
 done
 
 echo "Generating omega sweep plot..."

@@ -12,9 +12,9 @@ FIGURES_DIR="$ROOT_DIR/figures/strong_scaling"
 mkdir -p "$FIGURES_DIR"
 # Fixed parameters
 MESH_SIZE=64
-WAVENUMBER=5.0
+WAVENUMBER=16.0
 TOLERANCE=1e-4
-OMEGA=1.0  # For fixed-point
+OMEGA=0.1  # For fixed-point
 
 # Subdomain counts (powers of 2)
 SUBDOMAINS=(2 4 8 16 32)
@@ -26,33 +26,33 @@ echo "Wavenumber κ: ${WAVENUMBER}"
 echo ""
 
 # Run GMRES for all subdomain counts
-echo "Running GMRES experiments..."
-for J in "${SUBDOMAINS[@]}"; do
-    echo "  J=${J}..."
-     (cd "$SRC_DIR" && python main.py \
-        --mesh-size ${MESH_SIZE} \
-        --subdomains ${J} \
-        --wavenumber ${WAVENUMBER} \
-        --algorithm gmres \
-        --tolerance ${TOLERANCE} \
-        --output-dir "${EXP_RESULTS_DIR}" \
-        --save-plots)
-done
+#echo "Running GMRES experiments..."
+#for J in "${SUBDOMAINS[@]}"; do
+#    echo "  J=${J}..."
+#     (cd "$SRC_DIR" && python main.py \
+#        --mesh-size ${MESH_SIZE} \
+#        --subdomains ${J} \
+#        --wavenumber ${WAVENUMBER} \
+#        --algorithm gmres \
+#        --tolerance ${TOLERANCE} \
+#        --output-dir "${EXP_RESULTS_DIR}" \
+#        --no-solution)
+#done
 
-echo ""
-echo "Running Fixed-Point experiments..."
-for J in "${SUBDOMAINS[@]}"; do
-    echo "  J=${J}..."
-     (cd "$SRC_DIR" && python main.py \
-        --mesh-size ${MESH_SIZE} \
-        --subdomains ${J} \
-        --wavenumber ${WAVENUMBER} \
-        --algorithm fixed-point \
-        --omega ${OMEGA} \
-        --tolerance ${TOLERANCE} \
-        --output-dir "${EXP_RESULTS_DIR}" \
-        --save-plots)
-done
+#echo ""
+#echo "Running Fixed-Point experiments..."
+#for J in "${SUBDOMAINS[@]}"; do
+#    echo "  J=${J}..."
+#     (cd "$SRC_DIR" && python main.py \
+#        --mesh-size ${MESH_SIZE} \
+#        --subdomains ${J} \
+#        --wavenumber ${WAVENUMBER} \
+#        --algorithm fixed-point \
+#        --omega ${OMEGA} \
+#        --tolerance ${TOLERANCE} \
+#        --output-dir "${EXP_RESULTS_DIR}" \
+#        --no-solution)
+#done
 
 echo ""
 echo "=== Generating Plots ==="

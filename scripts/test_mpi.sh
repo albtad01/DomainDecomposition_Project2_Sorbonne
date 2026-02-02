@@ -14,7 +14,7 @@ echo "========================================"
 echo ""
 
 # Test parameters
-MESH_SIZE=64
+MESH_SIZE=256
 SUBDOMAINS=4
 LX=1.0
 LY=2.0

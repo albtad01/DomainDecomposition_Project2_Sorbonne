@@ -181,6 +181,11 @@ def parse_arguments():
         help="Plot mesh structure"
     )
     parser.add_argument(
+        "--no-solution",
+        action="store_true",
+        help="Skip recovering local and assembling global solutions"
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Verbose output"
@@ -281,6 +286,9 @@ def run_experiment(args):
         dof_per_subdomain = [total_dof]
         interface_dof = 0
 
+        if args.no_solution:
+            u_global = None
+
         metrics = {
             'algorithm': args.algorithm,
             'mesh_size': args.mesh_size,
@@ -304,9 +312,9 @@ def run_experiment(args):
             'iterations': history['iterations'],
             'final_residual': history['residuals'][-1] if history['residuals'] else None,
             'converged': info == 0,
-            'solution_norm': float(la.norm(u_global)),
-            'solution_max': float(np.max(np.abs(u_global))),
-            'solution_min': float(np.min(np.abs(u_global))),
+            'solution_norm': float(la.norm(u_global)) if u_global is not None else None,
+            'solution_max': float(np.max(np.abs(u_global))) if u_global is not None else None,
+            'solution_min': float(np.min(np.abs(u_global))) if u_global is not None else None,
             'residual_history': [float(r) for r in history['residuals']]
         }
 
@@ -316,7 +324,7 @@ def run_experiment(args):
     print("Building subdomain data...")
     t0 = time.time()
     subs = build_subdomains(args.Lx, args.Ly, Nx, Ny, args.subdomains, 
-                            args.wavenumber, sp)
+                           args.wavenumber, sp)
     t_build = time.time() - t0
     
     # Compute total and per-subdomain DOF counts
@@ -368,23 +376,28 @@ def run_experiment(args):
         print("ERROR: GMRES did not converge. Aborting recovery.")
         return None, None, None, None
     
-    # Recover local solutions
-    print("Recovering local solutions...")
-    t0 = time.time()
-    u_dict = recover_local_solutions(subs, p)
-    t_recovery = time.time() - t0
-    print(f"  Done in {t_recovery:.3f}s")
-    print()
-    
-    # Assemble global solution on true global mesh
-    u_global = reconstruct_global_solution(args.Lx, args.Ly, Nx, Ny, subs, u_dict)
-    
-    # Print solution statistics
-    print("Solution statistics:")
-    print(f"  Global solution norm: {la.norm(u_global):.6e}")
-    print(f"  Global solution max:  {np.max(np.abs(u_global)):.6e}")
-    print(f"  Global solution min:  {np.min(np.abs(u_global)):.6e}")
-    print()
+    u_dict = {}
+    u_global = None
+    if args.no_solution:
+        t_recovery = 0.0
+    else:
+        # Recover local solutions
+        print("Recovering local solutions...")
+        t0 = time.time()
+        u_dict = recover_local_solutions(subs, p)
+        t_recovery = time.time() - t0
+        print(f"  Done in {t_recovery:.3f}s")
+        print()
+        
+        # Assemble global solution on true global mesh
+        u_global = reconstruct_global_solution(args.Lx, args.Ly, Nx, Ny, subs, u_dict)
+        
+        # Print solution statistics
+        print("Solution statistics:")
+        print(f"  Global solution norm: {la.norm(u_global):.6e}")
+        print(f"  Global solution max:  {np.max(np.abs(u_global)):.6e}")
+        print(f"  Global solution min:  {np.min(np.abs(u_global)):.6e}")
+        print()
     
     # Collect all metrics
     metrics = {
@@ -410,9 +423,9 @@ def run_experiment(args):
         'iterations': history['iterations'],
         'final_residual': history['residuals'][-1] if history['residuals'] else None,
         'converged': info == 0,
-        'solution_norm': float(la.norm(u_global)),
-        'solution_max': float(np.max(np.abs(u_global))),
-        'solution_min': float(np.min(np.abs(u_global))),
+        'solution_norm': float(la.norm(u_global)) if u_global is not None else None,
+        'solution_max': float(np.max(np.abs(u_global))) if u_global is not None else None,
+        'solution_min': float(np.min(np.abs(u_global))) if u_global is not None else None,
         'residual_history': [float(r) for r in history['residuals']]
     }
     
@@ -553,39 +566,47 @@ def run_mpi_experiment(args):
         print(f"  Solve time: {t_solve:.3f}s")
         print()
     
-    # Recover local solutions
-    if rank == 0 and args.verbose:
-        print("Recovering local solutions...")
-    
-    t0 = time.time()
-    u_local = reconstruct_local_solution(p_local, local_sub, verbose=args.verbose, rank=rank)
-    t_recovery = time.time() - t0
-    
-    # Gather to rank 0
-    u_gathered = gather_global_solution(u_local, local_sub, comm, verbose=args.verbose)
+    u_local = None
+    u_gathered = None
+    if args.no_solution:
+        t_recovery = 0.0
+    else:
+        # Recover local solutions
+        if rank == 0 and args.verbose:
+            print("Recovering local solutions...")
+        
+        t0 = time.time()
+        u_local = reconstruct_local_solution(p_local, local_sub, verbose=args.verbose, rank=rank)
+        t_recovery = time.time() - t0
+        
+        # Gather to rank 0
+        u_gathered = gather_global_solution(u_local, local_sub, comm, verbose=args.verbose)
     
     if rank == 0:
         if args.verbose:
             print(f"  Done in {t_recovery:.3f}s")
             print()
         
-        # Assemble global solution from gathered data
-        # Create u_dict for compatibility with plotting functions
-        u_dict = {j: u_gathered['u_values'][j] for j in range(J)}
-        
         # Reconstruct subs list on rank 0 for plotting
         subs = all_subs
         
-        # Assemble global solution vector on true global mesh
-        u_global = reconstruct_global_solution(args.Lx, args.Ly, Nx, Ny, subs, u_dict)
-        
-        # Print solution statistics
-        if args.verbose:
-            print("Solution statistics:")
-            print(f"  Global solution norm: {la.norm(u_global):.6e}")
-            print(f"  Global solution max:  {np.max(np.abs(u_global)):.6e}")
-            print(f"  Global solution min:  {np.min(np.abs(u_global)):.6e}")
-            print()
+        u_dict = {}
+        u_global = None
+        if not args.no_solution:
+            # Assemble global solution from gathered data
+            # Create u_dict for compatibility with plotting functions
+            u_dict = {j: u_gathered['u_values'][j] for j in range(J)}
+            
+            # Assemble global solution vector on true global mesh
+            u_global = reconstruct_global_solution(args.Lx, args.Ly, Nx, Ny, subs, u_dict)
+            
+            # Print solution statistics
+            if args.verbose:
+                print("Solution statistics:")
+                print(f"  Global solution norm: {la.norm(u_global):.6e}")
+                print(f"  Global solution max:  {np.max(np.abs(u_global)):.6e}")
+                print(f"  Global solution min:  {np.min(np.abs(u_global)):.6e}")
+                print()
         
         # Compute DOF statistics
         total_dof = sum(sd.vtxj.shape[0] for sd in subs)
@@ -617,9 +638,9 @@ def run_mpi_experiment(args):
             'iterations': history['iterations'],
             'final_residual': history['residuals'][-1] if history['residuals'] else None,
             'converged': True,
-            'solution_norm': float(la.norm(u_global)),
-            'solution_max': float(np.max(np.abs(u_global))),
-            'solution_min': float(np.min(np.abs(u_global))),
+            'solution_norm': float(la.norm(u_global)) if u_global is not None else None,
+            'solution_max': float(np.max(np.abs(u_global))) if u_global is not None else None,
+            'solution_min': float(np.min(np.abs(u_global))) if u_global is not None else None,
             'residual_history': [float(r) for r in history['residuals']]
         }
         
@@ -647,7 +668,7 @@ def plot_solutions(subs, u_dict, u_global, args, save_dir=None):
         else:
             plt.close('all')
     
-    if args.plot_global:
+    if args.plot_global and u_global is not None:
         if args.verbose:
             print("Plotting global solution...")
         
@@ -656,24 +677,21 @@ def plot_solutions(subs, u_dict, u_global, args, save_dir=None):
         Ny = 1 + int(args.Ly * args.mesh_size)
         vtx_global, elt_global = mesh(Nx, Ny, args.Lx, args.Ly)
         
-        # Reconstruct global solution vector by mapping each subdomain solution to global mesh
-        # For each global vertex, find which subdomain it belongs to and get its solution value
-        u_global_reconstructed = np.zeros(vtx_global.shape[0], dtype=np.complex128)
-        
-        for j, sd in enumerate(subs):
-            # Get local vertices and solution
-            vtxj = sd.vtxj
-            uj = u_dict[j]
-            
-            # For each local vertex, find the matching global vertex
-            for local_idx, local_vtx in enumerate(vtxj):
-                # Find closest/matching global vertex (with tolerance for floating point)
-                dists = np.linalg.norm(vtx_global - local_vtx, axis=1)
-                global_idx = np.argmin(dists)
-                
-                # Only assign if it's a very close match and not already assigned
-                if dists[global_idx] < 1e-10:
-                    u_global_reconstructed[global_idx] = uj[local_idx]
+        # Use provided global solution when available; otherwise reconstruct from subdomains
+        if u_global is not None:
+            u_global_reconstructed = u_global
+        else:
+            u_global_reconstructed = np.zeros(vtx_global.shape[0], dtype=np.complex128)
+            for j, sd in enumerate(subs):
+                if j not in u_dict:
+                    continue
+                vtxj = sd.vtxj
+                uj = u_dict[j]
+                for local_idx, local_vtx in enumerate(vtxj):
+                    dists = np.linalg.norm(vtx_global - local_vtx, axis=1)
+                    global_idx = np.argmin(dists)
+                    if dists[global_idx] < 1e-10:
+                        u_global_reconstructed[global_idx] = uj[local_idx]
         
         # Plot real part and magnitude side-by-side
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -702,7 +720,7 @@ def plot_solutions(subs, u_dict, u_global, args, save_dir=None):
         else:
             plt.show()
     
-    if args.plot_local:
+    if args.plot_local and u_dict:
         if args.verbose:
             print("Plotting local solutions...")
         for j, sd in enumerate(subs):
@@ -740,6 +758,8 @@ def save_results(subs, u_dict, u_global, metrics, args, p_interface=None):
     
     # If --output is specified, save only to that specific file for validation
     if args.output:
+        if args.no_solution:
+            raise ValueError("--output requires solution data; disable --no-solution")
         if args.verbose:
             print(f"\nSaving validation output to: {args.output}")
         
@@ -803,33 +823,34 @@ def save_results(subs, u_dict, u_global, metrics, args, p_interface=None):
     if args.verbose:
         print(f"  Saved global mesh: mesh_global.npz")
     
-    # Save global solution
-    np.savez_compressed(
-        output_dir / "solution_global.npz",
-        u_global=u_global
-    )
-    if args.verbose:
-        print(f"  Saved global solution: solution_global.npz")
-    
-    # Save local solutions
-    for j in range(len(subs)):
-        if j in u_dict:
-            np.savez_compressed(
-                output_dir / f"solution_subdomain_{j}.npz",
-                vertices=subs[j].vtxj,
-                elements=subs[j].eltj,
-                solution=u_dict[j]
-            )
-    if args.verbose:
-        print(f"  Saved {len(u_dict)} local subdomain solutions")
-    
-    # Save plots if requested
-    if args.save_plots or args.plot_global or args.plot_mesh or args.plot_local:
-        plot_dir = output_dir / "plots"
-        plot_dir.mkdir(exist_ok=True)
-        plot_solutions(subs, u_dict, u_global, args, save_dir=plot_dir)
+    if not args.no_solution and u_global is not None:
+        # Save global solution
+        np.savez_compressed(
+            output_dir / "solution_global.npz",
+            u_global=u_global
+        )
         if args.verbose:
-            print(f"  Saved plots to: {plot_dir}")
+            print(f"  Saved global solution: solution_global.npz")
+        
+        # Save local solutions
+        for j in range(len(subs)):
+            if j in u_dict:
+                np.savez_compressed(
+                    output_dir / f"solution_subdomain_{j}.npz",
+                    vertices=subs[j].vtxj,
+                    elements=subs[j].eltj,
+                    solution=u_dict[j]
+                )
+        if args.verbose:
+            print(f"  Saved {len(u_dict)} local subdomain solutions")
+        
+        # Save plots if requested
+        if args.save_plots or args.plot_global or args.plot_mesh or args.plot_local:
+            plot_dir = output_dir / "plots"
+            plot_dir.mkdir(exist_ok=True)
+            plot_solutions(subs, u_dict, u_global, args, save_dir=plot_dir)
+            if args.verbose:
+                print(f"  Saved plots to: {plot_dir}")
     
     print(f"\nAll results saved to: {output_dir}\n")
     return output_dir
@@ -851,10 +872,10 @@ def main():
         
         # Only rank 0 saves results and plots
         if rank == 0:
-            if u_global is not None:
+            if u_global is not None or args.no_solution:
                 output_dir = save_results(subs, u_dict, u_global, metrics, args, p_interface=p)
                 
-                if not args.save_plots:
+                if not args.save_plots and not args.no_solution:
                     plot_solutions(subs, u_dict, u_global, args)
                 
                 print("=" * 70)
@@ -868,10 +889,10 @@ def main():
         # Sequential execution
         subs, p, u_dict, u_global, metrics = run_experiment(args)
         
-        if u_global is not None:
+        if u_global is not None or args.no_solution:
             output_dir = save_results(subs, u_dict, u_global, metrics, args, p_interface=p)
             
-            if not args.save_plots:
+            if not args.save_plots and not args.no_solution:
                 plot_solutions(subs, u_dict, u_global, args)
             
             print("=" * 70)

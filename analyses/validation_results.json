@@ -1,0 +1,70 @@
+{
+  "configuration": {
+    "Lx": 1.0,
+    "Ly": 2.0,
+    "Nx": 33,
+    "Ny": 65,
+    "J": 4,
+    "kappa": 16.0,
+    "num_sources": 2,
+    "tolerance": 1e-06,
+    "omega": 1.0
+  },
+  "direct": {
+    "iterations": 413.0,
+    "solve_time": 0.12601900100708008,
+    "converged": 1.0
+  },
+  "dd_fixed_point": {
+    "iterations": 300.0,
+    "solve_time": 0.0,
+    "converged": 0.0
+  },
+  "comparison_fixed_point": {
+    "absolute_error": 0.0009983523422978705,
+    "relative_error": 0.0004329305191684296,
+    "max_absolute_error": 0.00024286566303404185,
+    "max_relative_error": 0.0013104723379462752,
+    "correlation": 0.9999998867699634,
+    "baseline_norm": 2.3060336430323733,
+    "comparison_norm": 2.3060256331083386
+  },
+  "dd_gmres": {
+    "iterations": 40.0,
+    "solve_time": 0.0,
+    "converged": 1.0
+  },
+  "comparison_gmres": {
+    "absolute_error": 4.1886651065576775e-05,
+    "relative_error": 1.816393754364179e-05,
+    "max_absolute_error": 2.2000744947709176e-06,
+    "max_relative_error": 1.1871323145480195e-05,
+    "correlation": 0.9999999998696024,
+    "baseline_norm": 2.3060336430323733,
+    "comparison_norm": 2.3060171549660766
+  },
+  "dd_mpi_fixed_point": {
+    "iterations": 300.0,
+    "solve_time": 0.03455400466918945,
+    "converged": 0.0,
+    "nprocs": 4.0
+  },
+  "comparison_mpi": {
+    "absolute_error": 0.0009983523422978705,
+    "relative_error": 0.0004329305191684296,
+    "max_absolute_error": 0.00024286566303404185,
+    "max_relative_error": 0.0013104723379462752,
+    "correlation": 0.9999998867699634,
+    "baseline_norm": 2.3060336430323733,
+    "comparison_norm": 2.3060256331083386
+  },
+  "comparison_mpi_vs_sequential": {
+    "absolute_error": 0.0,
+    "relative_error": 0.0,
+    "max_absolute_error": 0.0,
+    "max_relative_error": 0.0,
+    "correlation": 0.9999999999999998,
+    "baseline_norm": 2.3060256331083386,
+    "comparison_norm": 2.3060256331083386
+  }
+}
