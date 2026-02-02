@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 
 
@@ -28,6 +29,22 @@ PARAM_KEYS = [
     "sources",
     "tolerance",
 ]
+
+LABEL_FONTSIZE = 24
+TICK_FONTSIZE = 20
+LEGEND_FONTSIZE = 24
+
+
+def add_parameter_legend(ax: plt.Axes, param_text: str, main_legend: Any) -> None:
+    param_handle = Line2D([], [], color="none", label=param_text)
+    ax.add_artist(main_legend)
+    ax.legend(
+        handles=[param_handle],
+        title="Parameters",
+        title_fontsize=LEGEND_FONTSIZE,
+        fontsize=LEGEND_FONTSIZE,
+        loc="upper left",
+    )
 
 
 def load_metrics(metrics_path: Path) -> Dict[str, Any]:
@@ -337,28 +354,33 @@ def main() -> int:
         gmres_iter = np.arange(1, len(gmres_res) + 1)
         fixed_iter = np.arange(1, len(fixed_res) + 1)
 
-        plt.figure(figsize=(9, 6))
-        plt.semilogy(gmres_iter, gmres_res, label="GMRES", linewidth=2)
-        plt.semilogy(fixed_iter, fixed_res, label="Fixed-Point", linewidth=2)
+        fig, ax = plt.subplots(figsize=(10.5, 7.5))
+        ax.semilogy(gmres_iter, gmres_res, label="GMRES", linewidth=3.0)
+        ax.semilogy(fixed_iter, fixed_res, label="Fixed-Point", linewidth=3.0)
 
+        omega_text = fixed.get("omega")
         title = args.title
         if title is None:
-            omega_text = fixed.get("omega")
             title = (
                 f"Convergence Comparison (m={gmres.get('mesh_size')}, "
                 f"J={gmres.get('subdomains')}, κ={gmres.get('wavenumber')}, ω={omega_text})"
             )
 
-        plt.title(title)
-        plt.xlabel("Iteration")
-        plt.ylabel("Residual norm")
-        plt.grid(True, which="both", linestyle="--", alpha=0.4)
-        plt.legend()
-        plt.tight_layout()
+        ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+        main_legend = ax.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+        param_text = (
+            f"m={gmres.get('mesh_size')}, J={gmres.get('subdomains')}, "
+            f"κ={gmres.get('wavenumber')}, ω={omega_text}"
+        )
+        add_parameter_legend(ax, param_text, main_legend)
+        fig.tight_layout()
 
         if args.output:
             output_path = Path(args.output)
-            plt.savefig(output_path, dpi=150)
+            fig.savefig(output_path, dpi=150)
             print(f"Saved plot to {output_path}")
         else:
             plt.show()
@@ -374,30 +396,30 @@ def main() -> int:
             print("Warning: no fixed-point runs found for omega sweep.")
             return 0
 
-        plt.figure(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(10.5, 7.5))
         for omega, path in sorted(fixed_by_omega.items(), key=lambda x: x[0]):
             data = load_metrics(path)
             res = data.get("residual_history", [])
             if not res:
                 continue
             iters = np.arange(1, len(res) + 1)
-            plt.semilogy(iters, res, label=f"ω={omega}", linewidth=2)
+            ax.semilogy(iters, res, label=f"ω={omega}", linewidth=3.0)
 
-        plt.title(
-            f"Fixed-Point Convergence vs ω (m={args.mesh_size}, J={args.subdomains}, κ={args.wavenumber})"
-        )
-        plt.xlabel("Iteration")
-        plt.ylabel("Residual norm")
-        plt.grid(True, which="both", linestyle="--", alpha=0.4)
-        plt.legend()
-        plt.tight_layout()
+        ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+        main_legend = ax.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+        param_text = f"m={args.mesh_size}, J={args.subdomains}, κ={args.wavenumber}"
+        add_parameter_legend(ax, param_text, main_legend)
+        fig.tight_layout()
 
         if args.output:
             output_path = Path(args.output)
             sweep_path = output_path.with_name(
                 output_path.stem + "_omega_sweep" + output_path.suffix
             )
-            plt.savefig(sweep_path, dpi=150)
+            fig.savefig(sweep_path, dpi=150)
             print(f"Saved omega sweep plot to {sweep_path}")
         else:
             plt.show()
@@ -415,7 +437,7 @@ def main() -> int:
             print("Warning: no runs found for mesh sweep.")
             return 0
 
-        plt.figure(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(10.5, 7.5))
         for m, path in sorted(mesh_runs.items(), key=lambda x: x[0]):
             data = load_metrics(path)
             res = data.get("residual_history", [])
@@ -425,24 +447,23 @@ def main() -> int:
             label = f"m={m}"
             if sweep_algo == "fixed-point":
                 label = f"m={m}, ω={data.get('omega')}"
-            plt.semilogy(iters, res, label=label, linewidth=2)
+            ax.semilogy(iters, res, label=label, linewidth=3.0)
 
-        sweep_title = (
-            f"{sweep_algo.upper()} Convergence vs Mesh (J={args.subdomains}, κ={args.wavenumber})"
-        )
-        plt.title(sweep_title)
-        plt.xlabel("Iteration")
-        plt.ylabel("Residual norm")
-        plt.grid(True, which="both", linestyle="--", alpha=0.4)
-        plt.legend()
-        plt.tight_layout()
+        ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+        main_legend = ax.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+        param_text = f"J={args.subdomains}, κ={args.wavenumber}"
+        add_parameter_legend(ax, param_text, main_legend)
+        fig.tight_layout()
 
         if args.output:
             output_path = Path(args.output)
             sweep_path = output_path.with_name(
                 output_path.stem + f"_{sweep_algo}_mesh_sweep" + output_path.suffix
             )
-            plt.savefig(sweep_path, dpi=150)
+            fig.savefig(sweep_path, dpi=150)
             print(f"Saved mesh sweep plot to {sweep_path}")
         else:
             plt.show()
@@ -461,7 +482,7 @@ def main() -> int:
             print("Warning: no runs found for strong scaling.")
             return 0
 
-        plt.figure(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(10.5, 7.5))
         for J, path in sorted(strong_runs.items(), key=lambda x: x[0]):
             data = load_metrics(path)
             res = data.get("residual_history", [])
@@ -471,24 +492,23 @@ def main() -> int:
             label = f"J={J}"
             if scaling_algo == "fixed-point":
                 label = f"J={J}, ω={data.get('omega')}"
-            plt.semilogy(iters, res, label=label, linewidth=2)
+            ax.semilogy(iters, res, label=label, linewidth=3.0)
 
-        strong_title = (
-            f"{scaling_algo.upper()} Strong Scaling (m={args.mesh_size}, κ={args.wavenumber})"
-        )
-        plt.title(strong_title)
-        plt.xlabel("Iteration")
-        plt.ylabel("Residual norm")
-        plt.grid(True, which="both", linestyle="--", alpha=0.4)
-        plt.legend()
-        plt.tight_layout()
+        ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+        main_legend = ax.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+        param_text = f"m={args.mesh_size}, κ={args.wavenumber}"
+        add_parameter_legend(ax, param_text, main_legend)
+        fig.tight_layout()
 
         if args.output:
             output_path = Path(args.output)
             sweep_path = output_path.with_name(
                 output_path.stem + f"_{scaling_algo}_strong_scaling" + output_path.suffix
             )
-            plt.savefig(sweep_path, dpi=150)
+            fig.savefig(sweep_path, dpi=150)
             print(f"Saved strong scaling plot to {sweep_path}")
         else:
             plt.show()
@@ -506,7 +526,7 @@ def main() -> int:
             print("Warning: no runs found for weak scaling.")
             return 0
 
-        plt.figure(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(10.5, 7.5))
         for J, path in sorted(weak_runs.items(), key=lambda x: x[0]):
             data = load_metrics(path)
             res = data.get("residual_history", [])
@@ -517,24 +537,23 @@ def main() -> int:
             label = f"J={J}, m={m}"
             if scaling_algo == "fixed-point":
                 label = f"J={J}, m={m}, ω={data.get('omega')}"
-            plt.semilogy(iters, res, label=label, linewidth=2)
+            ax.semilogy(iters, res, label=label, linewidth=3.0)
 
-        weak_title = (
-            f"{scaling_algo.upper()} Weak Scaling (κ={args.wavenumber})"
-        )
-        plt.title(weak_title)
-        plt.xlabel("Iteration")
-        plt.ylabel("Residual norm")
-        plt.grid(True, which="both", linestyle="--", alpha=0.4)
-        plt.legend()
-        plt.tight_layout()
+        ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)
+        ax.grid(True, which="both", linestyle="--", alpha=0.4)
+        ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+        main_legend = ax.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+        param_text = f"κ={args.wavenumber}"
+        add_parameter_legend(ax, param_text, main_legend)
+        fig.tight_layout()
 
         if args.output:
             output_path = Path(args.output)
             sweep_path = output_path.with_name(
                 output_path.stem + f"_{scaling_algo}_weak_scaling" + output_path.suffix
             )
-            plt.savefig(sweep_path, dpi=150)
+            fig.savefig(sweep_path, dpi=150)
             print(f"Saved weak scaling plot to {sweep_path}")
         else:
             plt.show()

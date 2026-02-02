@@ -8,6 +8,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+LABEL_FONTSIZE = 24
+TICK_FONTSIZE = 20
+LEGEND_FONTSIZE = 24
+
 
 def _ensure_outdir(outdir: Path) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
@@ -56,15 +60,14 @@ def plot_iters_vs_m(df: pd.DataFrame, outpath: Path | None, title: str | None = 
     m = df["m"].to_numpy(dtype=float)
     iters = df["iters"].to_numpy(dtype=float)
 
-    fig = plt.figure(figsize=(9.2, 5.2), dpi=140)
+    fig = plt.figure(figsize=(10.5, 6.2), dpi=140)
     ax = fig.add_subplot(111)
 
-    ax.plot(m, iters, marker="o", linewidth=2.0, markersize=5.5)
+    ax.plot(m, iters, marker="o", linewidth=3.0, markersize=5.5)
 
-    ax.set_xlabel("m (discretization parameter)")
-    ax.set_ylabel("GMRES iterations to reach tolerance")
-    if title:
-        ax.set_title(title)
+    ax.set_xlabel("m (discretization parameter)", fontsize=LABEL_FONTSIZE)
+    ax.set_ylabel("GMRES iterations to reach tolerance", fontsize=LABEL_FONTSIZE)
+    ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
 
     # Make it clean & readable
     ax.grid(True, which="major", linewidth=0.6, alpha=0.35)

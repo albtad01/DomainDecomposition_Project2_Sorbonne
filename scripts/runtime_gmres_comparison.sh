@@ -10,8 +10,8 @@ RESULTS_DIR="$ROOT_DIR/results/runtime_gmres_comparison"
 FIGURES_DIR="$ROOT_DIR/figures/runtime_gmres_comparison"
 
 # Parameters
-MESH_SIZES=(32 64 128)
-SUBDOMAINS=4
+MESH_SIZES=(32 64 128 256 512)
+SUBDOMAINS=(2)
 WAVENUMBER=16
 SOURCES=8
 TOLERANCE=1e-8
@@ -19,21 +19,25 @@ SEED=42
 Lx=1.0
 Ly=2.0
 
-mkdir -p "$RESULTS_DIR" "$FIGURES_DIR"
+#mkdir -p "$RESULTS_DIR" "$FIGURES_DIR"
 
 for M in "${MESH_SIZES[@]}"; do
-  echo "Running DD-GMRES (m=${M})"
-  (cd "$SRC_DIR" && python main.py \
-    --algorithm gmres \
-    --mesh-size "$M" \
-    --subdomains "$SUBDOMAINS" \
-    --wavenumber "$WAVENUMBER" \
-    --sources "$SOURCES" \
-    --tolerance "$TOLERANCE" \
-    --seed "$SEED" \
-    --Lx "$Lx" \
-    --Ly "$Ly" \
-    --output-dir "$RESULTS_DIR")
+  for J in "${SUBDOMAINS[@]}"; do
+    echo "Running DD-GMRES (m=${M}, J=${J})"
+    (cd "$SRC_DIR" && python main.py \
+      --algorithm gmres \
+      --mesh-size "$M" \
+      --subdomains "$J" \
+      --wavenumber "$WAVENUMBER" \
+      --sources "$SOURCES" \
+      --tolerance "$TOLERANCE" \
+      --seed "$SEED" \
+      --Lx "$Lx" \
+      --Ly "$Ly" \
+      --output-dir "$RESULTS_DIR" \
+      --no-solution)
+  done
+  
 
   echo "Running baseline GMRES (m=${M})"
   (cd "$SRC_DIR" && python main.py \
@@ -46,7 +50,8 @@ for M in "${MESH_SIZES[@]}"; do
     --seed "$SEED" \
     --Lx "$Lx" \
     --Ly "$Ly" \
-    --output-dir "$RESULTS_DIR")
+    --output-dir "$RESULTS_DIR" \
+    --no-solution)
 done
 
 (cd "$ANALYSIS_DIR" && python plot_runtime.py \

@@ -16,7 +16,7 @@ echo "Using small mesh (m=16) for fast validation"
 echo
 
 python validate_solvers.py \
-    --mesh-size 16 \
+    --mesh-size 32 \
     --subdomains 4 \
     --wavenumber 16.0 \
     --sources 2 \

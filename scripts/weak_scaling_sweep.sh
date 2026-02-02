@@ -11,10 +11,10 @@ ANALYSIS_DIR="$ROOT_DIR/analyses"
 mkdir -p "$FIGURES_DIR"
 
 # Base parameters
-BASE_MESH_SIZE=16  # Mesh size for J=1
-WAVENUMBER=5.0
+BASE_MESH_SIZE=32  # Mesh size for J=1
+WAVENUMBER=16
 TOLERANCE=1e-4
-OMEGA=1.0  # For fixed-point
+OMEGA=0.1  # For fixed-point
 
 # Subdomain counts (powers of 2) with corresponding mesh sizes
 # To maintain constant DOF per subdomain: m scales with J
@@ -35,43 +35,43 @@ echo "Fixed DOF per subdomain (m/J ~ constant)"
 echo "Wavenumber κ: ${WAVENUMBER}"
 echo ""
 echo "Configurations:"
-for J in 2 4 8; do
+for J in 2 4 8 16 32; do
     m=$(get_mesh_size $J)
     echo "  J=${J}, m=${m}"
 done
 echo ""
 
 # Run GMRES for all configurations
-echo "Running GMRES experiments..."
-SRC_DIR="$ROOT_DIR/src"
-for J in 2 4 8; do
-    m=$(get_mesh_size $J)
-    echo "  J=${J}, m=${m}..."
-    (cd "$SRC_DIR" && python main.py \
-        --mesh-size ${m} \
-        --subdomains ${J} \
-        --wavenumber ${WAVENUMBER} \
-        --algorithm gmres \
-        --tolerance ${TOLERANCE} \
-        --output-dir "${EXP_RESULTS_DIR}" \
-        --save-plots)
-done
+#echo "Running GMRES experiments..."
+#SRC_DIR="$ROOT_DIR/src"
+#for J in 2 4 8 16 32; do
+#    m=$(get_mesh_size $J)
+#    echo "  J=${J}, m=${m}..."
+#    (cd "$SRC_DIR" && python main.py \
+#        --mesh-size ${m} \
+#        --subdomains ${J} \
+#        --wavenumber ${WAVENUMBER} \
+#        --algorithm gmres \
+#        --tolerance ${TOLERANCE} \
+#        --output-dir "${EXP_RESULTS_DIR}" \
+#        --no-solution)
+#done
 
-echo ""
-echo "Running Fixed-Point experiments..."
-for J in 2 4 8; do
-    m=$(get_mesh_size $J)
-    echo "  J=${J}, m=${m}..."
-    (cd "$SRC_DIR" && python main.py \
-        --mesh-size ${m} \
-        --subdomains ${J} \
-        --wavenumber ${WAVENUMBER} \
-        --algorithm fixed-point \
-        --omega ${OMEGA} \
-        --tolerance ${TOLERANCE} \
-        --output-dir "${EXP_RESULTS_DIR}" \
-        --save-plots)
-done
+#echo ""
+#echo "Running Fixed-Point experiments..."
+#for J in 2 4 8 16 32; do
+#    m=$(get_mesh_size $J)
+#    echo "  J=${J}, m=${m}..."
+#    (cd "$SRC_DIR" && python main.py \
+#        --mesh-size ${m} \
+#        --subdomains ${J} \
+#        --wavenumber ${WAVENUMBER} \
+#        --algorithm fixed-point \
+#        --omega ${OMEGA} \
+#        --tolerance ${TOLERANCE} \
+#        --output-dir "${EXP_RESULTS_DIR}" \
+#        --no-solution)
+#done
 
 echo ""
 echo "=== Generating Plots ==="

@@ -19,40 +19,43 @@ MAX_ITER=500
 OMEGA=0.1
 
 # Mesh sizes (doubling): 32 -> 256
-MESH_SIZES=(32 64 128)
+MESH_SIZES=(256 512)
 
-echo "Running GMRES mesh refinement sweep..."
-for M in "${MESH_SIZES[@]}"; do
-  echo "  m=${M}"
-  (cd "$SRC_DIR" && python main.py \
-    -a gmres \
-    -m "$M" \
-    -J "$SUBDOMAINS" \
-    -k "$WAVENUMBER" \
-    -s "$SOURCES" \
-    --tolerance "$TOLERANCE" \
-    --max-iterations "$MAX_ITER" \
-    --output-dir "${EXP_RESULTS_DIR}" \
-    --save-plots)
+#echo "Running GMRES mesh refinement sweep..."
+#for M in "${MESH_SIZES[@]}"; do
+#  echo "  m=${M}"
+#  (cd "$SRC_DIR" && python main.py \
+#    -a gmres \
+#    -m "$M" \
+#    -J "$SUBDOMAINS" \
+#    -k "$WAVENUMBER" \
+#    -s "$SOURCES" \
+#    --tolerance "$TOLERANCE" \
+#    --max-iterations "$MAX_ITER" \
+#    --output-dir "${EXP_RESULTS_DIR}" \
+#    --no-solution )
+#
+#done
 
-done
 
 echo "Running fixed-point mesh refinement sweep (omega=${OMEGA})..."
-for M in "${MESH_SIZES[@]}"; do
-  echo "  m=${M}"
-  (cd "$SRC_DIR" && python main.py \
-    -a fixed-point \
-    -m "$M" \
-    -J "$SUBDOMAINS" \
-    -k "$WAVENUMBER" \
-    -s "$SOURCES" \
-    --tolerance "$TOLERANCE" \
-    --max-iterations "$MAX_ITER" \
-    --omega "$OMEGA" \
-    --output-dir "${EXP_RESULTS_DIR}" \
-    --save-plots)
+#for M in "${MESH_SIZES[@]}"; do
+#  echo "  m=${M}"
+#  (cd "$SRC_DIR" && python main.py \
+#    -a fixed-point \
+#    -m "$M" \
+#    -J "$SUBDOMAINS" \
+#    -k "$WAVENUMBER" \
+#    -s "$SOURCES" \
+#    --tolerance "$TOLERANCE" \
+#    --max-iterations "$MAX_ITER" \
+#    --omega "$OMEGA" \
+#    --output-dir "${EXP_RESULTS_DIR}" \
+#    --no-solution )
+#
+#done
 
-done
+
 
 echo "Generating mesh-sweep convergence plots..."
 (cd "$ANALYSIS_DIR" && python plot_convergence.py \

@@ -14,6 +14,10 @@ from typing import Dict, Tuple
 import json
 import matplotlib.pyplot as plt
 
+LABEL_FONTSIZE = 24
+TICK_FONTSIZE = 20
+LEGEND_FONTSIZE = 24
+
 
 def load_metrics(path: Path) -> Dict:
     with open(path, "r") as f:
@@ -76,15 +80,15 @@ def main() -> int:
         else:
             baseline_times.append(None)
 
-    plt.figure(figsize=(9, 6))
-    plt.plot(mesh_sizes, baseline_times, marker="o", linewidth=2, label="Full GMRES")
-    plt.plot(mesh_sizes, gmres_times, marker="o", linewidth=2, label="DD-GMRES")
-    plt.xlabel("Mesh size m")
-    plt.ylabel("Runtime (s)")
-    plt.title("Runtime Comparison: DD-GMRES vs Full GMRES")
-    plt.grid(True, linestyle="--", alpha=0.4)
-    plt.legend()
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(10.5, 7.5))
+    ax.plot(mesh_sizes, baseline_times, marker="o", linewidth=3.0, label="Full GMRES")
+    ax.plot(mesh_sizes, gmres_times, marker="o", linewidth=3.0, label="DD-GMRES")
+    ax.set_xlabel("Mesh size m", fontsize=LABEL_FONTSIZE)
+    ax.set_ylabel("Runtime (s)", fontsize=LABEL_FONTSIZE)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    ax.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+    ax.legend(fontsize=LEGEND_FONTSIZE)
+    fig.tight_layout()
 
     out_path = figures_dir / "runtime_comparison.png"
     plt.savefig(out_path, dpi=150)
