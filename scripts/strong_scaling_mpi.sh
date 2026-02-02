@@ -3,10 +3,10 @@
 #SBATCH --account=p200981
 #SBATCH --partition=cpu
 #SBATCH --qos=default
-#SBATCH --nodes=64
+#SBATCH --nodes=4
 #SBATCH --ntasks=64
 #SBATCH --cpus-per-task=1
-#SBATCH --time=08:00:00
+#SBATCH --time=00:02:00
 #SBATCH --output=logs/strong_scaling_mpi_%j.out
 
 set -euo pipefail
@@ -101,7 +101,7 @@ for J in "${SUBDOMAINS[@]}"; do
             --omega ${OMEGA} \
             --tolerance ${TOLERANCE} \
             --output-dir "${EXP_RESULTS_DIR}" \
-            --save-plots)
+            --no-solution)
 done
 
 echo ""
