@@ -1,20 +1,18 @@
 #!/bin/bash
 #SBATCH --job-name=DD_WeakScaling_MPI
-#SBATCH --account=p200981
-#SBATCH --partition=cpu
+#SBATCH --partition=az4-mixed
 #SBATCH --qos=default
-#SBATCH --nodes=64
+#SBATCH --nodes=4
 #SBATCH --ntasks=64
 #SBATCH --cpus-per-task=1
-#SBATCH --time=08:00:00
+#SBATCH --time=00:02:00
 #SBATCH --output=logs/weak_scaling_mpi_%j.out
 
-set -euo pipefail
 mkdir -p logs
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_DIR="$ROOT_DIR/src"
-EXP_RESULTS_DIR="$ROOT_DIR/results/weak_scaling_mpi_${SLURM_JOB_ID:-local}"
+cd ..
+SRC_DIR="./src"
+EXP_RESULTS_DIR="./results/weak_scaling_mpi_${SLURM_JOB_ID:-local}"
 mkdir -p "$EXP_RESULTS_DIR"
 
 # --- Initialize module system on compute nodes ---
@@ -51,11 +49,11 @@ python -V
 python -c "import sys; print(sys.executable)"
 echo "====================="
 
-if [ ! -f "$ROOT_DIR/venv/bin/activate" ]; then
-    echo "ERROR: venv/bin/activate not found in ${ROOT_DIR}."
-    exit 1
-fi
-source "$ROOT_DIR/venv/bin/activate"
+#if [ ! -f "$ROOT_DIR/venv/bin/activate" ]; then
+#    echo "ERROR: venv/bin/activate not found in ${ROOT_DIR}."
+#    exit 1
+#fi
+source "venv/bin/activate"
 
 echo "=== VENV PYTHON ==="
 which python
