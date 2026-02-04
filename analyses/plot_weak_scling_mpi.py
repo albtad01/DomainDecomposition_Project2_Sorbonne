@@ -46,6 +46,9 @@ def collect_latest_metrics(results_dir: Path) -> Dict[Tuple[str, int], Path]:
         if J is None:
             continue
 
+        if int(J) <= 1:
+            continue
+
         if int(J) > 16:
             continue
 
@@ -74,10 +77,14 @@ def build_series(
     latest: Dict[Tuple[str, int], Path], baseline_j: int
 ) -> Dict[str, Dict[str, List[Tuple[int, float]]]]:
     """
-    Build series per base label: runtime, efficiency.
-    Returns {base_label: {"time": [(J, t)], "eff": [(J, e)]}}
+    Build series per base label.
+    Returns {base_label: {"time": [(J, t)], "eff": [(J, e)],
+                          "build": [(J, t_build)],
+                          "solve_per_iter": [(J, t_iter)]}}
     """
     per_base: Dict[str, Dict[int, float]] = {}
+    per_base_build: Dict[str, Dict[int, float]] = {}
+    per_base_solve_iter: Dict[str, Dict[int, float]] = {}
     mesh_sizes: Dict[str, int] = {}
 
     for (base_label, J), path in latest.items():
@@ -87,6 +94,12 @@ def build_series(
             continue
 
         per_base.setdefault(base_label, {})[int(J)] = float(total_time)
+        per_base_build.setdefault(base_label, {})[int(J)] = float(total_time)
+
+        solve_time = data.get("solve_time")
+        iterations = data.get("iterations")
+        if solve_time is not None and iterations:
+            per_base_solve_iter.setdefault(base_label, {})[int(J)] = float(solve_time) / float(iterations)
         if base_label not in mesh_sizes:
             m = data.get("mesh_size")
             if m is not None:
@@ -108,9 +121,15 @@ def build_series(
         # if base_label in mesh_sizes:
         #     label = f"m={mesh_sizes[base_label]}"
 
+        build_series = [(j, per_base_build[base_label][j]) for j in js_sorted]
+        solve_iter_by_j = per_base_solve_iter.get(base_label, {})
+        solve_iter_series = [(j, solve_iter_by_j[j]) for j in sorted(solve_iter_by_j.keys())]
+
         series[label] = {
             "time": time_series,
             "eff": efficiency,
+            "build": build_series,
+            "solve_per_iter": solve_iter_series,
         }
 
     return series
@@ -126,6 +145,8 @@ def plot_weak_scaling(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     runtime_path = out_path.with_name(out_path.stem + "_runtime" + out_path.suffix)
     efficiency_path = out_path.with_name(out_path.stem + "_efficiency" + out_path.suffix)
+    solve_iter_path = out_path.with_name(out_path.stem + "_solve_per_iter" + out_path.suffix)
+    build_time_path = out_path.with_name(out_path.stem + "_build_time" + out_path.suffix)
 
     fig_time = plt.figure(figsize=(9.0, 6.8), dpi=140)
     ax_time = fig_time.add_subplot(111)
@@ -133,12 +154,22 @@ def plot_weak_scaling(
     fig_eff = plt.figure(figsize=(9.0, 6.8), dpi=140)
     ax_eff = fig_eff.add_subplot(111)
 
+    fig_solve = plt.figure(figsize=(9.0, 6.8), dpi=140)
+    ax_solve = fig_solve.add_subplot(111)
+
+    fig_build = plt.figure(figsize=(9.0, 6.8), dpi=140)
+    ax_build = fig_build.add_subplot(111)
+
     all_js: List[int] = []
     baseline_times: List[float] = []
     for label, data in series.items():
         js = [j for j, _ in data["time"]]
         times = [v for _, v in data["time"]]
         eff = [v for _, v in data["eff"]]
+        solve_js = [j for j, _ in data.get("solve_per_iter", [])]
+        solve_iter = [v for _, v in data.get("solve_per_iter", [])]
+        build_js = [j for j, _ in data.get("build", [])]
+        build_times = [v for _, v in data.get("build", [])]
 
         all_js.extend(js)
         for j, t in data["time"]:
@@ -147,6 +178,10 @@ def plot_weak_scaling(
 
         ax_time.plot(js, times, marker="o", linewidth=3.0, label=label)
         ax_eff.plot(js, eff, marker="o", linewidth=3.0, label=label)
+        if solve_js:
+            ax_solve.plot(solve_js, solve_iter, marker="o", linewidth=3.0, label=label)
+        if build_js:
+            ax_build.plot(build_js, build_times, marker="o", linewidth=3.0, label=label)
 
     if all_js:
         js_sorted = sorted(set(all_js))
@@ -206,13 +241,67 @@ def plot_weak_scaling(
         labelspacing=0.3,
     )
 
+    ax_solve.set_xlabel("Subdomains J", fontsize=LABEL_FONTSIZE)
+    ax_solve.set_ylabel("Solve time per iteration (s)", fontsize=LABEL_FONTSIZE)
+    ax_solve.set_xscale("log", base=2)
+    ax_solve.set_yscale("log")
+    ax_solve.grid(True, linestyle="--", alpha=0.4)
+    ax_solve.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+    solve_legend = ax_solve.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+    solve_param_parts = [f"baseline J={baseline_j}"]
+    if wavenumber is not None:
+        solve_param_parts.append(f"k={wavenumber}")
+    if omega is not None:
+        solve_param_parts.append(f"ω={omega}")
+    solve_param = Line2D([], [], color="none", label="\n".join(solve_param_parts))
+    ax_solve.add_artist(solve_legend)
+    ax_solve.legend(
+        handles=[solve_param],
+        fontsize=LEGEND_FONTSIZE,
+        loc="lower right",
+        handlelength=0,
+        handletextpad=0,
+        borderpad=0.3,
+        labelspacing=0.3,
+    )
+
+    ax_build.set_xlabel("Subdomains J", fontsize=LABEL_FONTSIZE)
+    ax_build.set_ylabel("Build time (s)", fontsize=LABEL_FONTSIZE)
+    ax_build.set_xscale("log", base=2)
+    ax_build.set_yscale("log")
+    ax_build.grid(True, linestyle="--", alpha=0.4)
+    ax_build.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+    build_legend = ax_build.legend(fontsize=LEGEND_FONTSIZE, loc="upper right")
+    build_param_parts = [f"baseline J={baseline_j}"]
+    if wavenumber is not None:
+        build_param_parts.append(f"k={wavenumber}")
+    if omega is not None:
+        build_param_parts.append(f"ω={omega}")
+    build_param = Line2D([], [], color="none", label="\n".join(build_param_parts))
+    ax_build.add_artist(build_legend)
+    ax_build.legend(
+        handles=[build_param],
+        fontsize=LEGEND_FONTSIZE,
+        loc="lower right",
+        handlelength=0,
+        handletextpad=0,
+        borderpad=0.3,
+        labelspacing=0.3,
+    )
+
     fig_time.tight_layout()
     fig_eff.tight_layout()
+    fig_solve.tight_layout()
+    fig_build.tight_layout()
 
     fig_time.savefig(runtime_path, dpi=150)
     fig_eff.savefig(efficiency_path, dpi=150)
+    fig_solve.savefig(solve_iter_path, dpi=150)
+    fig_build.savefig(build_time_path, dpi=150)
     print(f"Saved plot to {runtime_path}")
     print(f"Saved plot to {efficiency_path}")
+    print(f"Saved plot to {solve_iter_path}")
+    print(f"Saved plot to {build_time_path}")
 
 
 def main() -> int:
@@ -232,8 +321,8 @@ def main() -> int:
     parser.add_argument(
         "--baseline-j",
         type=int,
-        default=1,
-        help="Baseline subdomains J (default: 1)",
+        default=2,
+        help="Baseline subdomains J (default: 2)",
     )
     parser.add_argument(
         "--output-name",
