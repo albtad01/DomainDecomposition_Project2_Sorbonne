@@ -11,67 +11,83 @@ ANALYSIS_DIR="$ROOT_DIR/analyses"
 mkdir -p "$FIGURES_DIR"
 
 # Base parameters
-BASE_MESH_SIZE=32  # Mesh size for J=1
+BASE_MESH_SIZE=128  # Fixed mesh size
+BASE_LY=2.0        # Base domain height for J=1
 WAVENUMBER=16
 TOLERANCE=1e-4
 OMEGA=0.1  # For fixed-point
 
-# Subdomain counts (powers of 2) with corresponding mesh sizes
-# To maintain constant DOF per subdomain: m scales with J
-# J=1: m=32 (baseline)
-# J=2: m=64 (2x mesh for 2x subdomains)
-# J=4: m=128 (4x mesh for 4x subdomains)
-# J=8: m=256 (8x mesh for 8x subdomains)
-# J=16: m=512
+# Subdomain counts (powers of 2)
+# To maintain constant DOF per subdomain: Ly scales with J
+# J=1: Ly=2.0 (baseline)
+# J=2: Ly=4.0
+# ...
 
-# Function to get mesh size for given J (portable bash 3.x compatible)
-get_mesh_size() {
+# Calculate base nodes in Y (minus 1) for J=1
+# BASE_LY * BASE_MESH_SIZE should be integer for clean scaling
+# For Ly=2.0, m=32 -> 64 intervals
+BASE_NY_MO=$(python3 -c "print(int($BASE_LY * $BASE_MESH_SIZE))")
+
+get_Ly() {
     local J=$1
-    echo $((BASE_MESH_SIZE * J))
+    python3 -c "print(float($BASE_LY * $J))"
+}
+
+get_Ny() {
+    local J=$1
+    echo $((BASE_NY_MO * J + 1))
 }
 
 echo "=== Weak Scaling Study ==="
-echo "Fixed DOF per subdomain (m/J ~ constant)"
+echo "Fixed DOF per subdomain (Ly ~ J, Ny ~ J, m constant)"
 echo "Wavenumber κ: ${WAVENUMBER}"
+echo "Mesh Size m: ${BASE_MESH_SIZE}"
 echo ""
 echo "Configurations:"
 for J in 2 4 8 16 32; do
-    m=$(get_mesh_size $J)
-    echo "  J=${J}, m=${m}"
+    Ly=$(get_Ly $J)
+    Ny=$(get_Ny $J)
+    echo "  J=${J}, Ly=${Ly}, Ny=${Ny}"
 done
 echo ""
 
-# Run GMRES for all configurations
-#echo "Running GMRES experiments..."
-#SRC_DIR="$ROOT_DIR/src"
-#for J in 2 4 8 16 32; do
-#    m=$(get_mesh_size $J)
-#    echo "  J=${J}, m=${m}..."
-#    (cd "$SRC_DIR" && python main.py \
-#        --mesh-size ${m} \
-#        --subdomains ${J} \
-#        --wavenumber ${WAVENUMBER} \
-#        --algorithm gmres \
-#        --tolerance ${TOLERANCE} \
-#        --output-dir "${EXP_RESULTS_DIR}" \
-#        --no-solution)
-#done
+echo "Running GMRES experiments..."
+SRC_DIR="$ROOT_DIR/src"
+for J in 2 4 8 16 32; do
+    #Ly=$(get_Ly $J)
+    Ny=$(get_Ny $J)
+    echo "  J=${J}, Ly=${Ly}, Ny=${Ny}..."
+    (cd "$SRC_DIR" && python main.py \
+        --mesh-size ${BASE_MESH_SIZE} \
+        --Ly 2 \
+        --Ny ${Ny} \
+        --subdomains ${J} \
+        --wavenumber ${WAVENUMBER} \
+        --algorithm gmres \
+        --tolerance ${TOLERANCE} \
+        --output-dir "${EXP_RESULTS_DIR}" \
+        --no-solution)
+done
 
-#echo ""
-#echo "Running Fixed-Point experiments..."
-#for J in 2 4 8 16 32; do
-#    m=$(get_mesh_size $J)
-#    echo "  J=${J}, m=${m}..."
-#    (cd "$SRC_DIR" && python main.py \
-#        --mesh-size ${m} \
-#        --subdomains ${J} \
-#        --wavenumber ${WAVENUMBER} \
-#        --algorithm fixed-point \
-#        --omega ${OMEGA} \
-#        --tolerance ${TOLERANCE} \
-#        --output-dir "${EXP_RESULTS_DIR}" \
-#        --no-solution)
-#done
+echo ""
+echo "Running Fixed-Point experiments..."
+for J in 2 4 8 16 32; do
+    Ly=$(get_Ly $J)
+    Ny=$(get_Ny $J)
+    echo "  J=${J}, Ly=${Ly}, Ny=${Ny}..."
+    (cd "$SRC_DIR" && python main.py \
+        --mesh-size ${BASE_MESH_SIZE} \
+        --Ly 2 \
+        --Ny ${Ny} \
+        --subdomains ${J} \
+        --wavenumber ${WAVENUMBER} \
+        --algorithm fixed-point \
+        --omega ${OMEGA} \
+        --max-iterations 1000 \
+        --tolerance ${TOLERANCE} \
+        --output-dir "${EXP_RESULTS_DIR}" \
+        --no-solution)
+done
 
 echo ""
 echo "=== Generating Plots ==="

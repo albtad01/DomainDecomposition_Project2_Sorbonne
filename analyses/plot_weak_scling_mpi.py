@@ -46,8 +46,19 @@ def collect_latest_metrics(results_dir: Path) -> Dict[Tuple[str, int], Path]:
         if J is None:
             continue
 
+        if int(J) > 16:
+            continue
+
         try:
-            base_label = metrics_path.parents[2].name
+            # Parent[2] is the experiment group folder (e.g. weak_scaling_mpi_32_XXXX)
+            group_folder = metrics_path.parents[2].name
+            # Try to extract the base size (assuming format weak_scaling_mpi_32_...)
+            parts = group_folder.split('_')
+            if len(parts) >= 4 and parts[3].isdigit():
+                base_val = parts[3]
+                base_label = f"Base m={base_val}"
+            else:
+                base_label = group_folder
         except Exception:
             base_label = "base"
 
@@ -71,7 +82,7 @@ def build_series(
 
     for (base_label, J), path in latest.items():
         data = load_metrics(path)
-        total_time = data.get("total_time")
+        total_time = data.get("build_time")
         if total_time is None:
             continue
 
@@ -93,8 +104,9 @@ def build_series(
         time_series = [(j, times_by_j[j]) for j in js_sorted]
 
         label = base_label
-        if base_label in mesh_sizes:
-            label = f"m={mesh_sizes[base_label]}"
+        # For weak scaling, mesh size changes, so we rely on the base_label we constructed
+        # if base_label in mesh_sizes:
+        #     label = f"m={mesh_sizes[base_label]}"
 
         series[label] = {
             "time": time_series,
@@ -220,8 +232,8 @@ def main() -> int:
     parser.add_argument(
         "--baseline-j",
         type=int,
-        default=2,
-        help="Baseline subdomains J (default: 2)",
+        default=1,
+        help="Baseline subdomains J (default: 1)",
     )
     parser.add_argument(
         "--output-name",

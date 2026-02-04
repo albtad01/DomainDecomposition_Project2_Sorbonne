@@ -11,7 +11,7 @@ EXP_RESULTS_DIR="$ROOT_DIR/results/strong_scaling"
 FIGURES_DIR="$ROOT_DIR/figures/strong_scaling"
 mkdir -p "$FIGURES_DIR"
 # Fixed parameters
-MESH_SIZE=64
+MESH_SIZE=128
 WAVENUMBER=16.0
 TOLERANCE=1e-4
 OMEGA=0.1  # For fixed-point
@@ -25,40 +25,58 @@ echo "Varying subdomains J: ${SUBDOMAINS[@]}"
 echo "Wavenumber κ: ${WAVENUMBER}"
 echo ""
 
-# Run GMRES for all subdomain counts
-#echo "Running GMRES experiments..."
-#for J in "${SUBDOMAINS[@]}"; do
-#    echo "  J=${J}..."
-#     (cd "$SRC_DIR" && python main.py \
-#        --mesh-size ${MESH_SIZE} \
-#        --subdomains ${J} \
-#        --wavenumber ${WAVENUMBER} \
-#        --algorithm gmres \
-#        --tolerance ${TOLERANCE} \
-#        --output-dir "${EXP_RESULTS_DIR}" \
-#        --no-solution)
-#done
+echo "Running GMRES experiments..."
+for J in "${SUBDOMAINS[@]}"; do
+    echo "  J=${J}..."
+     (cd "$SRC_DIR" && python main.py \
+        --mesh-size ${MESH_SIZE} \
+        --subdomains ${J} \
+        --wavenumber ${WAVENUMBER} \
+        --algorithm gmres \
+        --tolerance ${TOLERANCE} \
+        --output-dir "${EXP_RESULTS_DIR}" \
+        --no-solution)
+done
 
-#echo ""
-#echo "Running Fixed-Point experiments..."
-#for J in "${SUBDOMAINS[@]}"; do
-#    echo "  J=${J}..."
-#     (cd "$SRC_DIR" && python main.py \
-#        --mesh-size ${MESH_SIZE} \
-#        --subdomains ${J} \
-#        --wavenumber ${WAVENUMBER} \
-#        --algorithm fixed-point \
-#        --omega ${OMEGA} \
-#        --tolerance ${TOLERANCE} \
-#        --output-dir "${EXP_RESULTS_DIR}" \
-#        --no-solution)
-#done
+echo "Running Fixed-Point experiments..."
+for J in "${SUBDOMAINS[@]}"; do
+    echo "  J=${J}..."
+     (cd "$SRC_DIR" && python main.py \
+        --mesh-size ${MESH_SIZE} \
+        --subdomains ${J} \
+        --wavenumber ${WAVENUMBER} \
+        --algorithm fixed-point \
+        --omega ${OMEGA} \
+        --max-iterations 1000 \
+        --tolerance ${TOLERANCE} \
+        --output-dir "${EXP_RESULTS_DIR}" \
+        --no-solution)
+done
 
 echo ""
 echo "=== Generating Plots ==="
 
 # Generate strong scaling plot for GMRES
 echo "Generating GMRES strong scaling plot..."
+(cd "$ANALYSIS_DIR" && python plot_strong_scaling.py \
+    --mesh-size ${MESH_SIZE} \
+    --wavenumber ${WAVENUMBER} \
+    --algorithm gmres \
+    --results-dir "${EXP_RESULTS_DIR}" \
+    --output "$FIGURES_DIR/gmres_strong_scaling.png")
+
+# Generate strong scaling plot for Fixed-Point
+echo "Generating Fixed-Point strong scaling plot..."
+(cd "$ANALYSIS_DIR" && python plot_strong_scaling.py \
+    --mesh-size ${MESH_SIZE} \
+    --wavenumber ${WAVENUMBER} \
+    --algorithm fixed-point \
+    --omega ${OMEGA} \
+    --results-dir "${EXP_RESULTS_DIR}" \
+    --output "$FIGURES_DIR/fixed_point_strong_scaling.png")
+
+# Generate convergence history plots (Verification)
+echo "Generating Convergence History plots..."
 (cd "$ANALYSIS_DIR" && python plot_convergence.py \
     --mesh-size ${MESH_SIZE} \
     --subdomains ${SUBDOMAINS[0]} \
@@ -66,10 +84,8 @@ echo "Generating GMRES strong scaling plot..."
     --results-dir "${EXP_RESULTS_DIR}" \
     --plot-strong-scaling \
     --scaling-algorithm gmres \
-    --output "$FIGURES_DIR/gmres_strong_scaling.png")
+    --output "$FIGURES_DIR/gmres_convergence_history.png")
 
-# Generate strong scaling plot for Fixed-Point
-echo "Generating Fixed-Point strong scaling plot..."
 (cd "$ANALYSIS_DIR" && python plot_convergence.py \
     --mesh-size ${MESH_SIZE} \
     --subdomains ${SUBDOMAINS[0]} \
@@ -78,7 +94,7 @@ echo "Generating Fixed-Point strong scaling plot..."
     --results-dir "${EXP_RESULTS_DIR}" \
     --plot-strong-scaling \
     --scaling-algorithm fixed-point \
-    --output "$FIGURES_DIR/fixed_point_strong_scaling.png")
+    --output "$FIGURES_DIR/fixed_point_convergence_history.png")
 
 echo ""
 echo "=== Strong Scaling Study Complete ==="

@@ -71,7 +71,7 @@ def build_series(
 
     for (base_label, J), path in latest.items():
         data = load_metrics(path)
-        total_time = data.get("total_time")
+        total_time = data.get("build_time")
         if total_time is None:
             continue
 
@@ -211,8 +211,8 @@ def main() -> int:
     parser.add_argument(
         "--baseline-j",
         type=int,
-        default=2,
-        help="Baseline subdomains J (default: 2)",
+        default=1,
+        help="Baseline subdomains J (default: 1)",
     )
     parser.add_argument(
         "--output-name",

@@ -488,11 +488,19 @@ def main() -> int:
             res = data.get("residual_history", [])
             if not res:
                 continue
-            iters = np.arange(1, len(res) + 1)
+            
+            # Skip initial residual if it is scaling artifact (huge drop > 1e4)
+            start_idx = 0
+            if len(res) > 1 and res[0] > 1e4 * res[1]:
+                start_idx = 1
+            
+            plot_res = res[start_idx:]
+            iters = np.arange(1 + start_idx, len(res) + 1)
+            
             label = f"J={J}"
             if scaling_algo == "fixed-point":
                 label = f"J={J}, ω={data.get('omega')}"
-            ax.semilogy(iters, res, label=label, linewidth=3.0)
+            ax.semilogy(iters, plot_res, label=label, linewidth=3.0)
 
         ax.set_xlabel("Iteration", fontsize=LABEL_FONTSIZE)
         ax.set_ylabel("Residual norm", fontsize=LABEL_FONTSIZE)

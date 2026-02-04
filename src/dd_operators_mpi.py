@@ -10,6 +10,43 @@ from __future__ import annotations
 import numpy as np
 from mpi4py import MPI
 
+from dd_operators import SubdomainData
+from dd_mesh import local_mesh, local_boundary
+from dd_restrictions import Bj_matrix, Cj_matrix
+from dd_local_problems import Aj_matrix, Tj_matrix, Sj_factorization, bj_vector
+
+def build_subdomain_data_mpi(Lx, Ly, Nx, Ny, J, kappa, ps, comm):
+    """
+    Parallel version of build_subdomains: Each rank builds ONLY its own subdomain.
+    """
+    rank = comm.Get_rank()
+
+    if (Ny - 1) % J != 0:
+        raise ValueError(f"Ny-1 must be multiple of J. Got Ny={Ny}, J={J}")
+
+    # Build ONLY for j = rank
+    j = rank
+    vtxj, eltj = local_mesh(Lx, Ly, Nx, Ny, j, J)
+    beltj_phys, beltj_artf = local_boundary(Nx, Ny, j, J)
+
+    Bj = Bj_matrix(Nx, Ny, j, J, beltj_artf).tocsr()
+    Cj = Cj_matrix(Nx, Ny, j, J).tocsr()
+
+    Aj = Aj_matrix(vtxj, eltj, beltj_phys, kappa).tocsr()
+    Tj = Tj_matrix(vtxj, beltj_artf, Bj, kappa).tocsr()
+    lu, _ = Sj_factorization(Aj, Tj, Bj)
+
+    bj = bj_vector(vtxj, eltj, ps, kappa)
+
+    return SubdomainData(
+        j=j, Nx=Nx, Ny=Ny, J=J, kappa=kappa,
+        vtxj=vtxj, eltj=eltj,
+        beltj_phys=beltj_phys, beltj_artf=beltj_artf,
+        Bj=Bj, Cj=Cj,
+        Aj=Aj, Tj=Tj, lu=lu,
+        bj=bj
+    )
+
 
 def apply_S_local(p_local, local_sub):
     """

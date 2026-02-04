@@ -19,9 +19,9 @@ MAX_ITER=500
 OMEGA=0.1
 
 # Mesh sizes (doubling): 32 -> 256
-MESH_SIZES=(256 512)
+MESH_SIZES=(32 64 128)
 
-#echo "Running GMRES mesh refinement sweep..."
+echo "Running GMRES mesh refinement sweep..."
 #for M in "${MESH_SIZES[@]}"; do
 #  echo "  m=${M}"
 #  (cd "$SRC_DIR" && python main.py \
