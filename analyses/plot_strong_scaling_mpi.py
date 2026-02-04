@@ -45,6 +45,8 @@ def collect_latest_metrics(results_dir: Path) -> Dict[Tuple[str, int], Path]:
         J = data.get("subdomains")
         if J is None:
             continue
+        if int(J) <= 1:
+            continue
 
         try:
             base_label = metrics_path.parents[2].name
@@ -71,7 +73,7 @@ def build_series(
 
     for (base_label, J), path in latest.items():
         data = load_metrics(path)
-        total_time = data.get("build_time")
+        total_time = data.get("solve_time")
         if total_time is None:
             continue
 
@@ -211,8 +213,8 @@ def main() -> int:
     parser.add_argument(
         "--baseline-j",
         type=int,
-        default=1,
-        help="Baseline subdomains J (default: 1)",
+        default=2,
+        help="Baseline subdomains J (default: 2)",
     )
     parser.add_argument(
         "--output-name",
