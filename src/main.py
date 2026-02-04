@@ -39,6 +39,7 @@ try:
         reconstruct_local_solution,
         gather_global_solution
     )
+    from dd_operators_mpi import build_subdomain_data_mpi
     MPI_AVAILABLE = True
 except ImportError:
     MPI_AVAILABLE = False
@@ -237,7 +238,7 @@ def run_experiment(args):
     if args.Ny is not None:
         Ny = args.Ny
     else:
-        Ny_raw = 1 + int(args.Ly * args.mesh_size)
+        Ny_raw = 1 + int(args.Ly * args.mesh_size) 
         
         # For domain decomposition, ensure (Ny-1) is divisible by J
         if args.algorithm in ["fixed-point", "gmres"]:
@@ -517,31 +518,20 @@ def run_mpi_experiment(args):
     sp = [np.random.rand(3) * [args.Lx, args.Ly, 50.0] 
           for _ in range(args.sources)]
     
-    # Each rank builds ALL subdomains (deterministic operation)
-    # We do this instead of scatter because SuperLU objects cannot be pickled
-    # Since build_subdomains is deterministic, all ranks get identical data
+    # Parallel build: Each rank builds only its own subdomain
     if rank == 0 and args.verbose:
-        print("Building subdomain data (all ranks)...")
-        print(f"  Each rank will build all {J} subdomains...")
+        print("Building subdomain data (parallel)...")
+        print(f"  Each rank builds its own subdomain j=rank...")
     
     t0 = time.time()
-    all_subs = build_subdomains(args.Lx, args.Ly, Nx, Ny, J, args.wavenumber, sp)
+    local_sub = build_subdomain_data_mpi(args.Lx, args.Ly, Nx, Ny, J, args.wavenumber, sp, comm)
     t_build = time.time() - t0
-    
-    # Each rank extracts its own subdomain for computation
-    local_sub = all_subs[rank]
     
     if rank == 0 and args.verbose:
         print(f"  Done in {t_build:.3f}s")
-        print(f"  Rank 0 extracted subdomain 0")
-        print(f"  Local DOFs: {local_sub.vtxj.shape[0]}")
-        print(f"  Interface DOFs: {local_sub.Bj.shape[0]}")
-        print()
+        print(f"  Rank {rank} (Subdomain {local_sub.j}) DOFs: {local_sub.vtxj.shape[0]}, Interface: {local_sub.Bj.shape[0]}")
     elif args.verbose:
-        # Other ranks also print their info if verbose
-        print(f"  [Rank {rank}] Extracted subdomain {rank}, "
-              f"DOFs: {local_sub.vtxj.shape[0]}, "
-              f"Interface: {local_sub.Bj.shape[0]}")
+         print(f"  Rank {rank} (Subdomain {local_sub.j}) DOFs: {local_sub.vtxj.shape[0]}, Interface: {local_sub.Bj.shape[0]}")
     
     if rank == 0 and args.verbose:
         print("Solving interface problem with MPI fixed-point...")
@@ -582,17 +572,29 @@ def run_mpi_experiment(args):
         # Gather to rank 0
         u_gathered = gather_global_solution(u_local, local_sub, comm, verbose=args.verbose)
     
+    # Gather statistics
+    local_dof = local_sub.vtxj.shape[0]
+    local_interface = local_sub.Bj.shape[0]
+    dof_per_subdomain = comm.gather(local_dof, root=0)
+    interface_dofs = comm.gather(local_interface, root=0)
+    
     if rank == 0:
         if args.verbose:
             print(f"  Done in {t_recovery:.3f}s")
             print()
         
-        # Reconstruct subs list on rank 0 for plotting
-        subs = all_subs
-        
+        # Reconstruct subs list on rank 0 for plotting if needed
+        subs = []
         u_dict = {}
         u_global = None
-        if not args.no_solution:
+        
+        # Only rebuild partial structure if strictly needed for plotting
+        if not args.no_solution or args.plot_mesh or args.plot_global or args.plot_local:
+             if args.verbose:
+                 print("Recomputing global mesh structure for visualization (rank 0)...")
+             subs = build_subdomains(args.Lx, args.Ly, Nx, Ny, J, args.wavenumber, sp)
+        
+        if not args.no_solution and subs:
             # Assemble global solution from gathered data
             # Create u_dict for compatibility with plotting functions
             u_dict = {j: u_gathered['u_values'][j] for j in range(J)}
@@ -609,9 +611,8 @@ def run_mpi_experiment(args):
                 print()
         
         # Compute DOF statistics
-        total_dof = sum(sd.vtxj.shape[0] for sd in subs)
-        dof_per_subdomain = [sd.vtxj.shape[0] for sd in subs]
-        interface_dof = sum(sd.Bj.shape[0] for sd in subs)
+        total_dof = sum(dof_per_subdomain) if dof_per_subdomain else 0
+        interface_dof = sum(interface_dofs) if interface_dofs else 0
         
         # Collect metrics
         metrics = {

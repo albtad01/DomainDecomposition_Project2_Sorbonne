@@ -12,7 +12,7 @@
   },
   "direct": {
     "iterations": 413.0,
-    "solve_time": 0.12601900100708008,
+    "solve_time": 0.14653897285461426,
     "converged": 1.0
   },
   "dd_fixed_point": {
@@ -45,7 +45,7 @@
   },
   "dd_mpi_fixed_point": {
     "iterations": 300.0,
-    "solve_time": 0.03455400466918945,
+    "solve_time": 0.20727992057800293,
     "converged": 0.0,
     "nprocs": 4.0
   },

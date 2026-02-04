@@ -14,12 +14,13 @@ echo "========================================"
 echo ""
 
 # Test parameters
-MESH_SIZE=256
+MESH_SIZE=128
 SUBDOMAINS=4
 LX=1.0
 LY=2.0
 OMEGA=0.1
-
+SOURCES=8
+WAVENUMBER=16
 echo "Test configuration:"
 echo "  Mesh size:    $MESH_SIZE"
 echo "  Subdomains:   $SUBDOMAINS"
@@ -56,6 +57,8 @@ mpirun -np $SUBDOMAINS python "$SRC_DIR/main.py" \
     --Lx $LX \
     --Ly $LY \
     --omega $OMEGA \
+    --sources "$SOURCES" \
+    --wavenumber $WAVENUMBER \
     --tolerance 1e-6 \
     --max-iterations 100 \
     --output-dir "./results/test_mpi" \
